@@ -3,46 +3,163 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AnimalResource;
+use App\Http\Resources\FacilityResource;
+use App\Http\Resources\ActivityResource;
+use App\Http\Resources\CategoryResource;
 use App\Models\Animal;
 use App\Models\Facility;
 use App\Models\Activity;
-use App\Models\MapLocation;
+use App\Models\Category;
+use App\Models\MapNode;
+use App\Models\MapPath;
+use App\Models\OpeningHour;
+use App\Models\SyncLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class SyncController extends Controller
 {
-    public function sync(Request $request): JsonResponse
+    /**
+     * Check for updates since last sync timestamp.
+     */
+    public function checkUpdates(Request $request): JsonResponse
     {
-        $lastSync = $request->input('last_sync', '2000-01-01 00:00:00');
+        $request->validate([
+            'last_sync' => 'required|date',
+        ]);
 
-        $animals = Animal::with('category')
+        $lastSync = $request->input('last_sync');
+        $currentTime = now();
+
+        // Get updated records since last sync
+        $animals = Animal::with(['category', 'openingHours'])
             ->where('updated_at', '>', $lastSync)
-            ->where('is_visible', true)
+            ->active()
             ->get();
 
-        $facilities = Facility::with('facilityType')
+        $facilities = Facility::with(['category', 'openingHours'])
             ->where('updated_at', '>', $lastSync)
             ->get();
 
         $activities = Activity::with(['facility', 'animal'])
             ->where('updated_at', '>', $lastSync)
-            ->where('is_active', true)
+            ->scheduled()
             ->get();
 
-        $mapLocations = MapLocation::where('updated_at', '>', $lastSync)
-            ->where('is_interactive', true)
+        $categories = Category::where('updated_at', '>', $lastSync)
+            ->active()
             ->get();
+
+        $mapNodes = MapNode::where('updated_at', '>', $lastSync)->get();
+        $mapPaths = MapPath::where('updated_at', '>', $lastSync)->get();
+
+        // Log this sync
+        SyncLog::create([
+            'table_name' => 'sync_request',
+            'last_sync' => $currentTime,
+            'record_count' => $animals->count() + $facilities->count() + $activities->count(),
+            'sync_status' => 'success',
+            'metadata' => [
+                'animals' => $animals->count(),
+                'facilities' => $facilities->count(),
+                'activities' => $activities->count(),
+                'categories' => $categories->count(),
+            ],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'has_updates' => $animals->isNotEmpty() || $facilities->isNotEmpty() || 
+                           $activities->isNotEmpty() || $categories->isNotEmpty() ||
+                           $mapNodes->isNotEmpty() || $mapPaths->isNotEmpty(),
+            'data' => [
+                'animals' => AnimalResource::collection($animals),
+                'facilities' => FacilityResource::collection($facilities),
+                'activities' => ActivityResource::collection($activities),
+                'categories' => CategoryResource::collection($categories),
+                'map_nodes' => $mapNodes,
+                'map_paths' => $mapPaths,
+            ],
+            'counts' => [
+                'animals' => $animals->count(),
+                'facilities' => $facilities->count(),
+                'activities' => $activities->count(),
+                'categories' => $categories->count(),
+                'map_nodes' => $mapNodes->count(),
+                'map_paths' => $mapPaths->count(),
+            ],
+            'sync_time' => $currentTime->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Get complete dataset for initial offline storage.
+     */
+    public function getFullDataset(): JsonResponse
+    {
+        $currentTime = now();
+
+        // Get all active data
+        $animals = Animal::with(['category', 'openingHours', 'activities'])
+            ->active()
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get();
+
+        $facilities = Facility::with(['category', 'openingHours', 'activities'])
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get();
+
+        $activities = Activity::with(['facility', 'animal'])
+            ->scheduled()
+            ->orderBy('start_time')
+            ->get();
+
+        $categories = Category::active()
+            ->orderBy('display_order')
+            ->get();
+
+        $mapNodes = MapNode::all();
+        $mapPaths = MapPath::with(['startNode', 'endNode'])->get();
+
+        // Log this full dataset request
+        SyncLog::create([
+            'table_name' => 'full_dataset',
+            'last_sync' => $currentTime,
+            'record_count' => $animals->count() + $facilities->count() + $activities->count(),
+            'sync_status' => 'success',
+            'metadata' => [
+                'animals' => $animals->count(),
+                'facilities' => $facilities->count(),
+                'activities' => $activities->count(),
+                'categories' => $categories->count(),
+                'map_nodes' => $mapNodes->count(),
+                'map_paths' => $mapPaths->count(),
+            ],
+        ]);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'animals' => $animals,
-                'facilities' => $facilities,
-                'activities' => $activities,
-                'map_locations' => $mapLocations,
+                'animals' => AnimalResource::collection($animals),
+                'facilities' => FacilityResource::collection($facilities),
+                'activities' => ActivityResource::collection($activities),
+                'categories' => CategoryResource::collection($categories),
+                'map_nodes' => $mapNodes,
+                'map_paths' => $mapPaths,
             ],
-            'sync_time' => now()->toIso8601String(),
+            'counts' => [
+                'animals' => $animals->count(),
+                'facilities' => $facilities->count(),
+                'activities' => $activities->count(),
+                'categories' => $categories->count(),
+                'map_nodes' => $mapNodes->count(),
+                'map_paths' => $mapPaths->count(),
+            ],
+            'sync_time' => $currentTime->toIso8601String(),
+            'version' => '1.0.0',
         ]);
     }
 
