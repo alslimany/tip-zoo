@@ -75,6 +75,35 @@
         margin-left: 20px;
         margin-top: -5px;
     }
+    
+    /* Calibration corner markers */
+    .calibration-corner-marker {
+        background: transparent;
+        border: none;
+    }
+    
+    .corner-marker-icon {
+        width: 40px;
+        height: 40px;
+        background: #dc3545;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 10px;
+        cursor: move;
+        transition: all 0.2s;
+    }
+    
+    .corner-marker-icon:hover {
+        background: #c82333;
+        transform: scale(1.2);
+        box-shadow: 0 4px 15px rgba(220,53,69,0.6);
+    }
 </style>
 @endpush
 
@@ -165,24 +194,75 @@
 
                 <div id="calibrateForm" style="display: none;">
                     <h6>Map Calibration</h6>
-                    <p class="text-muted small">Set bounds for your map image</p>
-                    <div class="form-group">
-                        <label>North Latitude</label>
-                        <input type="number" step="0.000001" class="form-control form-control-sm" id="northLat" value="32.9">
+                    <p class="text-muted small">Drag corners to align map to zoo area</p>
+                    
+                    <div class="alert alert-info small p-2 mb-3">
+                        <i class="fas fa-info-circle"></i> Drag the 4 corner markers on the map to align your image with the zoo area. Coordinates update automatically.
                     </div>
+                    
                     <div class="form-group">
-                        <label>South Latitude</label>
-                        <input type="number" step="0.000001" class="form-control form-control-sm" id="southLat" value="32.88">
+                        <label>Image Opacity</label>
+                        <input type="range" class="custom-range" id="imageOpacity" min="0" max="100" value="80">
+                        <small class="text-muted">Adjust to see underlying map</small>
                     </div>
+                    
+                    <hr>
+                    
                     <div class="form-group">
-                        <label>East Longitude</label>
-                        <input type="number" step="0.000001" class="form-control form-control-sm" id="eastLng" value="13.2">
+                        <label class="font-weight-bold">Corner Coordinates</label>
                     </div>
+                    
                     <div class="form-group">
-                        <label>West Longitude</label>
-                        <input type="number" step="0.000001" class="form-control form-control-sm" id="westLng" value="13.18">
+                        <label>NW Corner (Top-Left)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.000001" class="form-control" id="nwLat" readonly>
+                            <input type="number" step="0.000001" class="form-control" id="nwLng" readonly>
+                        </div>
                     </div>
-                    <button class="btn btn-sm btn-success btn-block" id="applyCalibration">Apply Calibration</button>
+                    
+                    <div class="form-group">
+                        <label>NE Corner (Top-Right)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.000001" class="form-control" id="neLat" readonly>
+                            <input type="number" step="0.000001" class="form-control" id="neLng" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>SW Corner (Bottom-Left)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.000001" class="form-control" id="swLat" readonly>
+                            <input type="number" step="0.000001" class="form-control" id="swLng" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>SE Corner (Bottom-Right)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.000001" class="form-control" id="seLat" readonly>
+                            <input type="number" step="0.000001" class="form-control" id="seLng" readonly>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="form-group">
+                        <label>Center Point</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.000001" class="form-control" id="centerLat" readonly>
+                            <input type="number" step="0.000001" class="form-control" id="centerLng" readonly>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-sm btn-success btn-block" id="applyCalibration">
+                        <i class="fas fa-save"></i> Save Calibration
+                    </button>
+                    <button class="btn btn-sm btn-secondary btn-block" id="resetCalibration">
+                        <i class="fas fa-undo"></i> Reset to Zoo Center
+                    </button>
+                    <button class="btn btn-sm btn-info btn-block" id="exportCalibration">
+                        <i class="fas fa-download"></i> Export for Mobile App
+                    </button>
                 </div>
             </div>
         </div>
@@ -209,13 +289,16 @@
                 <p class="small">Upload your zoo floor plan or aerial image.</p>
                 
                 <h6><i class="fas fa-crosshairs text-secondary"></i> 2. Calibrate</h6>
-                <p class="small">Set geographic bounds to ensure accurate positioning that persists on resize.</p>
+                <p class="small"><strong>Drag the 4 corner markers</strong> to align your map image with the zoo area. Adjust image opacity to see the underlying base map. This ensures accurate GPS tracking and navigation.</p>
                 
                 <h6><i class="fas fa-map-marker-alt text-primary"></i> 3. Add Nodes</h6>
                 <p class="small">Place waypoints using geographic coordinates.</p>
                 
                 <h6><i class="fas fa-route text-success"></i> 4. Draw Paths</h6>
                 <p class="small">Connect nodes to create navigation paths.</p>
+                
+                <h6><i class="fas fa-download text-info"></i> 5. Export</h6>
+                <p class="small">Export calibration data for mobile app integration with GPS tracking.</p>
                 
                 <hr>
                 
@@ -273,6 +356,8 @@ let selectedNode = null;
 let pathStartNode = null;
 let mapImageUrl = '{{ $mapImageUrl }}';
 let mapBounds = {!! $mapBounds !!}; // Load saved bounds from database
+let cornerMarkers = {};
+let isCalibrating = false;
 
 $(document).ready(function() {
     initializeMap();
@@ -310,11 +395,34 @@ function initializeMap() {
 function loadMapSettings() {
     // Update calibration form with current bounds
     if (mapBounds && mapBounds.length === 2) {
-        $('#southLat').val(mapBounds[0][0]);
-        $('#westLng').val(mapBounds[0][1]);
-        $('#northLat').val(mapBounds[1][0]);
-        $('#eastLng').val(mapBounds[1][1]);
+        updateCalibrationForm();
     }
+}
+
+function updateCalibrationForm() {
+    if (!mapBounds || mapBounds.length !== 2) return;
+    
+    const sw = mapBounds[0]; // [lat, lng]
+    const ne = mapBounds[1]; // [lat, lng]
+    
+    // Update corner coordinates
+    $('#nwLat').val(ne[0].toFixed(6));
+    $('#nwLng').val(sw[1].toFixed(6));
+    
+    $('#neLat').val(ne[0].toFixed(6));
+    $('#neLng').val(ne[1].toFixed(6));
+    
+    $('#swLat').val(sw[0].toFixed(6));
+    $('#swLng').val(sw[1].toFixed(6));
+    
+    $('#seLat').val(sw[0].toFixed(6));
+    $('#seLng').val(ne[1].toFixed(6));
+    
+    // Calculate and display center
+    const centerLat = (sw[0] + ne[0]) / 2;
+    const centerLng = (sw[1] + ne[1]) / 2;
+    $('#centerLat').val(centerLat.toFixed(6));
+    $('#centerLng').val(centerLng.toFixed(6));
 }
 
 function addImageOverlay(url) {
@@ -354,6 +462,13 @@ function setupEventHandlers() {
 
     // Calibration
     $('#applyCalibration').click(applyCalibration);
+    $('#resetCalibration').click(resetCalibration);
+    $('#exportCalibration').click(exportCalibration);
+    $('#imageOpacity').on('input', function() {
+        if (imageOverlay) {
+            imageOverlay.setOpacity($(this).val() / 100);
+        }
+    });
 
     // Node operations
     $('#saveNode').click(updateNode);
@@ -382,9 +497,124 @@ function setTool(tool) {
     } else if (tool === 'calibrate') {
         $('#calibrateBtn').addClass('active');
         $('#calibrateForm').show();
+        map.dragging.enable();
+        enterCalibrationMode();
     }
     
     clearSelection();
+}
+
+function enterCalibrationMode() {
+    isCalibrating = true;
+    
+    // Remove existing corner markers
+    removeCornerMarkers();
+    
+    // Create draggable corner markers
+    if (!mapBounds || mapBounds.length !== 2) {
+        // Set default bounds around zoo center
+        const center = map.getCenter();
+        const offset = 0.01;
+        mapBounds = [
+            [center.lat - offset, center.lng - offset],
+            [center.lat + offset, center.lng + offset]
+        ];
+    }
+    
+    createCornerMarkers();
+    updateCalibrationForm();
+    
+    // Make image semi-transparent to see underlying map
+    if (imageOverlay) {
+        imageOverlay.setOpacity(0.6);
+        $('#imageOpacity').val(60);
+    }
+}
+
+function exitCalibrationMode() {
+    isCalibrating = false;
+    removeCornerMarkers();
+    
+    // Restore image opacity
+    if (imageOverlay) {
+        imageOverlay.setOpacity(0.8);
+        $('#imageOpacity').val(80);
+    }
+}
+
+function createCornerMarkers() {
+    const sw = mapBounds[0];
+    const ne = mapBounds[1];
+    
+    const corners = {
+        'nw': [ne[0], sw[1]],
+        'ne': [ne[0], ne[1]],
+        'sw': [sw[0], sw[1]],
+        'se': [sw[0], ne[1]]
+    };
+    
+    const cornerLabels = {
+        'nw': 'NW (Top-Left)',
+        'ne': 'NE (Top-Right)',
+        'sw': 'SW (Bottom-Left)',
+        'se': 'SE (Bottom-Right)'
+    };
+    
+    Object.keys(corners).forEach(corner => {
+        const icon = L.divIcon({
+            className: 'calibration-corner-marker',
+            html: `<div class="corner-marker-icon">${corner.toUpperCase()}</div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+        
+        const marker = L.marker(corners[corner], {
+            icon: icon,
+            draggable: true,
+            zIndexOffset: 1000
+        }).addTo(map);
+        
+        marker.bindTooltip(cornerLabels[corner], {
+            permanent: false,
+            direction: 'top'
+        });
+        
+        marker.on('drag', function(e) {
+            updateBoundsFromMarkers();
+            if (imageOverlay) {
+                imageOverlay.setBounds(mapBounds);
+            }
+            updateCalibrationForm();
+        });
+        
+        cornerMarkers[corner] = marker;
+    });
+}
+
+function removeCornerMarkers() {
+    Object.values(cornerMarkers).forEach(marker => {
+        if (marker) {
+            map.removeLayer(marker);
+        }
+    });
+    cornerMarkers = {};
+}
+
+function updateBoundsFromMarkers() {
+    if (!cornerMarkers.nw || !cornerMarkers.ne || !cornerMarkers.sw || !cornerMarkers.se) return;
+    
+    const nw = cornerMarkers.nw.getLatLng();
+    const ne = cornerMarkers.ne.getLatLng();
+    const sw = cornerMarkers.sw.getLatLng();
+    const se = cornerMarkers.se.getLatLng();
+    
+    // Calculate bounds from markers
+    const north = Math.max(nw.lat, ne.lat);
+    const south = Math.min(sw.lat, se.lat);
+    const west = Math.min(nw.lng, sw.lng);
+    const east = Math.max(ne.lng, se.lng);
+    
+    mapBounds = [[south, west], [north, east]];
 }
 
 function addNodeAt(latlng) {
@@ -647,36 +877,117 @@ function uploadMapImage() {
 }
 
 function applyCalibration() {
-    const north = parseFloat($('#northLat').val());
-    const south = parseFloat($('#southLat').val());
-    const east = parseFloat($('#eastLng').val());
-    const west = parseFloat($('#westLng').val());
-    
-    if (isNaN(north) || isNaN(south) || isNaN(east) || isNaN(west)) {
-        alert('Please enter valid coordinates');
+    if (!mapBounds || mapBounds.length !== 2) {
+        alert('Please calibrate the map by dragging the corner markers');
         return;
     }
     
-    mapBounds = [[south, west], [north, east]];
-    
+    // Update image overlay with final bounds
     if (imageOverlay) {
         imageOverlay.setBounds(mapBounds);
-        map.fitBounds(mapBounds);
     }
     
     // Save bounds to server
     $.ajax({
-        url: '{{ route("admin.map-editor.upload-map") }}', // We'll need a new endpoint for this
+        url: '{{ route("admin.map-editor.upload-map") }}',
         method: 'POST',
         data: {
             _token: '{{ csrf_token() }}',
             bounds: JSON.stringify(mapBounds)
         },
         success: function() {
-            alert('Map calibration applied successfully');
+            alert('✓ Map calibration saved successfully!\n\nCorner coordinates are now available for the mobile application.\n\nYou can now add nodes and paths on the calibrated map.');
+            exitCalibrationMode();
             setTool('pan');
+        },
+        error: function() {
+            alert('Error saving map calibration');
         }
     });
+}
+
+function resetCalibration() {
+    // Reset to Tripoli Central Zoo area
+    const zooCenter = [32.8872, 13.1913];
+    const offset = 0.01;
+    
+    mapBounds = [
+        [zooCenter[0] - offset, zooCenter[1] - offset],
+        [zooCenter[0] + offset, zooCenter[1] + offset]
+    ];
+    
+    if (imageOverlay) {
+        imageOverlay.setBounds(mapBounds);
+    }
+    
+    // Recreate corner markers at new positions
+    removeCornerMarkers();
+    createCornerMarkers();
+    updateCalibrationForm();
+    
+    map.setView(zooCenter, 16);
+}
+
+function exportCalibration() {
+    if (!mapBounds || mapBounds.length !== 2) {
+        alert('Please calibrate the map first');
+        return;
+    }
+    
+    const sw = mapBounds[0];
+    const ne = mapBounds[1];
+    
+    const calibrationData = {
+        mapImageUrl: mapImageUrl,
+        bounds: {
+            southwest: {
+                latitude: sw[0],
+                longitude: sw[1]
+            },
+            northeast: {
+                latitude: ne[0],
+                longitude: ne[1]
+            }
+        },
+        corners: {
+            northwest: {
+                latitude: ne[0],
+                longitude: sw[1]
+            },
+            northeast: {
+                latitude: ne[0],
+                longitude: ne[1]
+            },
+            southwest: {
+                latitude: sw[0],
+                longitude: sw[1]
+            },
+            southeast: {
+                latitude: sw[0],
+                longitude: ne[1]
+            }
+        },
+        center: {
+            latitude: (sw[0] + ne[0]) / 2,
+            longitude: (sw[1] + ne[1]) / 2
+        },
+        exportDate: new Date().toISOString(),
+        zooName: 'Tripoli Central Zoo'
+    };
+    
+    // Create downloadable JSON file
+    const dataStr = JSON.stringify(calibrationData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'zoo-map-calibration.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert('✓ Map calibration exported successfully!\n\nFile: zoo-map-calibration.json\n\nThis file contains all corner coordinates and bounds for integration with the mobile application and GPS tracking.');
 }
 </script>
 @endpush
