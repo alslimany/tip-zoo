@@ -18,8 +18,9 @@ class MapEditorController extends Controller
         $paths = MapPath::with(['startNode', 'endNode'])->get();
         $locations = MapLocation::all();
         $mapImageUrl = MapSetting::get('map_background_image', '');
+        $mapBounds = MapSetting::get('map_bounds', '[[32.88, 13.18], [32.9, 13.2]]');
         
-        return view('admin.map-editor.index', compact('nodes', 'paths', 'locations', 'mapImageUrl'));
+        return view('admin.map-editor.index', compact('nodes', 'paths', 'locations', 'mapImageUrl', 'mapBounds'));
     }
 
     public function storeNode(Request $request)
@@ -103,6 +104,17 @@ class MapEditorController extends Controller
 
     public function uploadMapImage(Request $request)
     {
+        // Handle map bounds calibration
+        if ($request->has('bounds')) {
+            MapSetting::set('map_bounds', $request->input('bounds'));
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Map bounds saved successfully'
+            ]);
+        }
+
+        // Handle map image upload
         $request->validate([
             'map_image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
         ]);
@@ -139,6 +151,7 @@ class MapEditorController extends Controller
             'nodes' => MapNode::all(),
             'paths' => MapPath::with(['startNode', 'endNode'])->get(),
             'locations' => MapLocation::all(),
+            'mapBounds' => MapSetting::get('map_bounds', '[[32.88, 13.18], [32.9, 13.2]]'),
         ]);
     }
 }
