@@ -169,9 +169,13 @@
                         <label>Description</label>
                         <textarea class="form-control form-control-sm" id="nodeDescription" rows="2"></textarea>
                     </div>
+                    <div class="alert alert-success alert-sm p-2 mb-2">
+                        <i class="fas fa-arrows-alt"></i> <strong>Drag the marker</strong> on the map to reposition this node
+                    </div>
                     <div class="form-group">
                         <label>Coordinates</label>
                         <input type="text" class="form-control form-control-sm" id="nodeCoords" readonly>
+                        <small class="form-text text-muted">Updates automatically as you drag</small>
                     </div>
                     <button class="btn btn-sm btn-primary btn-block" id="saveNode">Save Node</button>
                     <button class="btn btn-sm btn-danger btn-block" id="deleteNode">Delete Node</button>
@@ -637,6 +641,10 @@ function addNodeAt(latlng) {
 }
 
 function addNodeMarker(node) {
+    // Ensure x and y are numbers
+    node.x = parseFloat(node.x);
+    node.y = parseFloat(node.y);
+    
     const iconHtml = `<div class="node-marker ${node.type}" data-id="${node.id}"></div>`;
     const icon = L.divIcon({
         className: 'custom-div-icon',
@@ -645,7 +653,10 @@ function addNodeMarker(node) {
         iconAnchor: [8, 8]
     });
 
-    const marker = L.marker([node.x, node.y], { icon: icon })
+    const marker = L.marker([node.x, node.y], { 
+        icon: icon,
+        draggable: false  // Start as non-draggable
+    })
         .addTo(map)
         .on('click', function(e) {
             L.DomEvent.stopPropagation(e);
@@ -654,6 +665,14 @@ function addNodeMarker(node) {
             } else if (currentTool === 'pan') {
                 selectNode(node);
             }
+        })
+        .on('dragend', function(e) {
+            // Update node position when dragged
+            const latlng = e.target.getLatLng();
+            node.x = latlng.lat;
+            node.y = latlng.lng;
+            updateNodeCoordinatesDisplay(node);
+            updatePathsForNode(node);
         });
 
     // Add tooltip with node name
@@ -672,9 +691,20 @@ function selectNode(node) {
     clearSelection();
     selectedNode = node;
     
-    // Update marker appearance
+    // Ensure x and y are numbers
+    node.x = parseFloat(node.x);
+    node.y = parseFloat(node.y);
+    
+    // Update marker appearance and make it draggable
     const markerEl = $(`.node-marker[data-id="${node.id}"]`);
     markerEl.addClass('selected');
+    
+    // Enable dragging for the selected node
+    const marker = nodeMarkers[node.id];
+    if (marker) {
+        marker.dragging.enable();
+        marker.setOpacity(0.8);  // Make it slightly transparent to show it's selected
+    }
     
     // Show node form
     $('#nodeType').val(node.type);
@@ -685,8 +715,36 @@ function selectNode(node) {
     $('#toolInfo, #pathForm, #calibrateForm').hide();
 }
 
+function updateNodeCoordinatesDisplay(node) {
+    if (selectedNode && selectedNode.id === node.id) {
+        $('#nodeCoords').val(`${node.x.toFixed(6)}, ${node.y.toFixed(6)}`);
+    }
+}
+
+function updatePathsForNode(node) {
+    // Update all paths connected to this node
+    paths.forEach(path => {
+        if (path.start_node_id == node.id || path.end_node_id == node.id) {
+            // Remove old path line
+            if (pathLines[path.id]) {
+                map.removeLayer(pathLines[path.id]);
+            }
+            // Redraw path line with new coordinates
+            addPathLine(path);
+        }
+    });
+}
+
 function clearSelection() {
     $('.node-marker').removeClass('selected');
+    
+    // Disable dragging for previously selected node
+    if (selectedNode && nodeMarkers[selectedNode.id]) {
+        const marker = nodeMarkers[selectedNode.id];
+        marker.dragging.disable();
+        marker.setOpacity(1.0);  // Restore full opacity
+    }
+    
     selectedNode = null;
     pathStartNode = null;
     $('#nodeForm').hide();
@@ -803,8 +861,14 @@ function addPathLine(path) {
     const endNode = nodes.find(n => n.id == path.end_node_id);
     
     if (startNode && endNode) {
+        // Ensure coordinates are numbers
+        const startX = parseFloat(startNode.x);
+        const startY = parseFloat(startNode.y);
+        const endX = parseFloat(endNode.x);
+        const endY = parseFloat(endNode.y);
+        
         const pathLine = L.polyline(
-            [[startNode.x, startNode.y], [endNode.x, endNode.y]],
+            [[startX, startY], [endX, endY]],
             {
                 color: path.accessible ? '#28a745' : '#dc3545',
                 weight: 3,
