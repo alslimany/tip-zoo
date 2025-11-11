@@ -5,8 +5,8 @@ import 'package:zoo_mobile_app/models/facility.dart';
 import 'package:zoo_mobile_app/models/activity.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000/api';
-  
+  static const String baseUrl = 'http://10.0.2.2:8000/api';
+
   // Animals
   Future<List<Animal>> getAnimals() async {
     try {
