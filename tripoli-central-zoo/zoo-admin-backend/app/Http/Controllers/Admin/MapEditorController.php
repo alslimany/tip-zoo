@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Animal;
+use App\Models\Facility;
 use App\Models\MapNode;
 use App\Models\MapPath;
 use App\Models\MapLocation;
@@ -14,13 +16,17 @@ class MapEditorController extends Controller
 {
     public function index()
     {
-        $nodes = MapNode::all();
+        $nodes = MapNode::with('placeable')->get();
         $paths = MapPath::with(['startNode', 'endNode'])->get();
         $locations = MapLocation::all();
         $mapImageUrl = MapSetting::get('map_background_image', '');
         $mapBounds = MapSetting::get('map_bounds', '[[32.88, 13.18], [32.9, 13.2]]');
         
-        return view('admin.map-editor.index', compact('nodes', 'paths', 'locations', 'mapImageUrl', 'mapBounds'));
+        // Get unmapped animals and facilities
+        $unmappedAnimals = Animal::whereDoesntHave('mapNode')->where('status', 'active')->get(['id', 'name', 'species']);
+        $unmappedFacilities = Facility::whereDoesntHave('mapNode')->where('status', 'open')->get(['id', 'name', 'type']);
+        
+        return view('admin.map-editor.index', compact('nodes', 'paths', 'locations', 'mapImageUrl', 'mapBounds', 'unmappedAnimals', 'unmappedFacilities'));
     }
 
     public function storeNode(Request $request)
@@ -29,11 +35,21 @@ class MapEditorController extends Controller
             'x' => 'required|numeric',
             'y' => 'required|numeric',
             'type' => 'required|string',
+            'placeable_type' => 'nullable|string|in:animal,facility',
+            'placeable_id' => 'nullable|integer',
             'name' => 'nullable|string',
             'description' => 'nullable|string',
         ]);
 
+        // Convert placeable_type to full class name
+        if (!empty($validated['placeable_type'])) {
+            $validated['placeable_type'] = $validated['placeable_type'] === 'animal' 
+                ? Animal::class 
+                : Facility::class;
+        }
+
         $node = MapNode::create($validated);
+        $node->load('placeable');
 
         return response()->json([
             'success' => true,
@@ -44,14 +60,24 @@ class MapEditorController extends Controller
     public function updateNode(Request $request, MapNode $node)
     {
         $validated = $request->validate([
-            'x' => 'required|numeric',
-            'y' => 'required|numeric',
-            'type' => 'required|string',
+            'x' => 'numeric',
+            'y' => 'numeric',
+            'type' => 'string',
+            'placeable_type' => 'nullable|string|in:animal,facility',
+            'placeable_id' => 'nullable|integer',
             'name' => 'nullable|string',
             'description' => 'nullable|string',
         ]);
 
+        // Convert placeable_type to full class name if provided
+        if (isset($validated['placeable_type']) && !empty($validated['placeable_type'])) {
+            $validated['placeable_type'] = $validated['placeable_type'] === 'animal' 
+                ? Animal::class 
+                : Facility::class;
+        }
+
         $node->update($validated);
+        $node->load('placeable');
 
         return response()->json([
             'success' => true,
@@ -148,10 +174,20 @@ class MapEditorController extends Controller
     public function getMapData()
     {
         return response()->json([
-            'nodes' => MapNode::all(),
+            'nodes' => MapNode::with('placeable')->get(),
             'paths' => MapPath::with(['startNode', 'endNode'])->get(),
             'locations' => MapLocation::all(),
             'mapBounds' => MapSetting::get('map_bounds', '[[32.88, 13.18], [32.9, 13.2]]'),
+            'unmappedAnimals' => Animal::whereDoesntHave('mapNode')->where('status', 'active')->get(['id', 'name', 'species']),
+            'unmappedFacilities' => Facility::whereDoesntHave('mapNode')->where('status', 'open')->get(['id', 'name', 'type']),
+        ]);
+    }
+    
+    public function getUnmappedPlaces()
+    {
+        return response()->json([
+            'animals' => Animal::whereDoesntHave('mapNode')->where('status', 'active')->get(['id', 'name', 'species']),
+            'facilities' => Facility::whereDoesntHave('mapNode')->where('status', 'open')->get(['id', 'name', 'type']),
         ]);
     }
 }

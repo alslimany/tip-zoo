@@ -34,6 +34,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Map Editor
     Route::get('map-editor', [MapEditorController::class, 'index'])->name('map-editor.index');
     Route::get('map-editor/data', [MapEditorController::class, 'getMapData'])->name('map-editor.data');
+    Route::get('map-editor/unmapped-places', [MapEditorController::class, 'getUnmappedPlaces'])->name('map-editor.unmapped-places');
     Route::post('map-editor/nodes', [MapEditorController::class, 'storeNode'])->name('map-editor.nodes.store');
     Route::put('map-editor/nodes/{node}', [MapEditorController::class, 'updateNode'])->name('map-editor.nodes.update');
     Route::delete('map-editor/nodes/{node}', [MapEditorController::class, 'destroyNode'])->name('map-editor.nodes.destroy');

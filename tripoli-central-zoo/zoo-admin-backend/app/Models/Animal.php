@@ -134,4 +134,20 @@ class Animal extends Model
     {
         return $this->facts;
     }
+
+    /**
+     * Get the map node for this animal.
+     */
+    public function mapNode()
+    {
+        return $this->morphOne(MapNode::class, 'placeable');
+    }
+
+    /**
+     * Check if animal has been placed on the map.
+     */
+    public function getIsMappedAttribute(): bool
+    {
+        return $this->mapNode()->exists();
+    }
 }

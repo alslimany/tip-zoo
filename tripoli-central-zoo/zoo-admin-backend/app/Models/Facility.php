@@ -170,4 +170,20 @@ class Facility extends Model
     {
         return $this->status === 'open';
     }
+
+    /**
+     * Get the map node for this facility.
+     */
+    public function mapNode()
+    {
+        return $this->morphOne(MapNode::class, 'placeable');
+    }
+
+    /**
+     * Check if facility has been placed on the map.
+     */
+    public function getIsMappedAttribute(): bool
+    {
+        return $this->mapNode()->exists();
+    }
 }

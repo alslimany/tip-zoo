@@ -149,33 +149,10 @@
 
                 <hr>
 
-                <h5>Location on Map</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="location_x">Latitude (X)</label>
-                            <input type="number" step="0.000001" class="form-control @error('location_x') is-invalid @enderror" 
-                                   id="location_x" name="location_x" value="{{ old('location_x') }}">
-                            @error('location_x')
-                                <span class="invalid-feedback">{{ $message }}</span>
-                            @enderror
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="location_y">Longitude (Y)</label>
-                            <input type="number" step="0.000001" class="form-control @error('location_y') is-invalid @enderror" 
-                                   id="location_y" name="location_y" value="{{ old('location_y') }}">
-                            @error('location_y')
-                                <span class="invalid-feedback">{{ $message }}</span>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div id="map" style="height: 400px; border: 1px solid #ddd;"></div>
-                    <small class="form-text text-muted">Click on the map to set the facility's location</small>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Map Location:</strong> After creating this facility, you can place it on the zoo map using the 
+                    <a href="{{ route('admin.map-editor.index') }}" class="alert-link">Map Editor</a>.
                 </div>
 
                 <div class="form-group">
@@ -215,51 +192,5 @@ function previewImage(event) {
     const fileName = event.target.files[0].name;
     $(event.target).next('.custom-file-label').html(fileName);
 }
-
-// Initialize map
-let map, marker;
-$(document).ready(function() {
-    map = L.map('map').setView([32.8872, 13.1913], 13);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
-    const existingX = parseFloat($('#location_x').val());
-    const existingY = parseFloat($('#location_y').val());
-    
-    if (!isNaN(existingX) && !isNaN(existingY)) {
-        marker = L.marker([existingX, existingY]).addTo(map);
-        map.setView([existingX, existingY], 15);
-    }
-
-    map.on('click', function(e) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
-
-        $('#location_x').val(lat.toFixed(6));
-        $('#location_y').val(lng.toFixed(6));
-
-        if (marker) {
-            marker.setLatLng([lat, lng]);
-        } else {
-            marker = L.marker([lat, lng]).addTo(map);
-        }
-    });
-
-    $('#location_x, #location_y').on('change', function() {
-        const lat = parseFloat($('#location_x').val());
-        const lng = parseFloat($('#location_y').val());
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-            if (marker) {
-                marker.setLatLng([lat, lng]);
-            } else {
-                marker = L.marker([lat, lng]).addTo(map);
-            }
-            map.setView([lat, lng], 15);
-        }
-    });
-});
 </script>
 @endpush
