@@ -59,6 +59,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="{{ route('admin.categories.index') }}" class="nav-link {{ Request::is('admin/categories*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tags"></i>
+                            <p>Categories</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="{{ route('admin.animals.index') }}" class="nav-link {{ Request::is('admin/animals*') ? 'active' : '' }}">
                             <i class="nav-icon fas fa-hippo"></i>
                             <p>Animals</p>

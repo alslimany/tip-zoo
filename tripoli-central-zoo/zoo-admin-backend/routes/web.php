@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\AnimalController;
 use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\MapEditorController;
 
 Route::get('/', function () {
@@ -15,6 +16,9 @@ Route::get('/', function () {
 Route::prefix('admin')->name('admin.')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Categories
+    Route::resource('categories', CategoryController::class);
 
     // Animals
     Route::resource('animals', AnimalController::class);

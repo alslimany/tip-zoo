@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MapNode;
 use App\Models\MapPath;
 use App\Models\MapLocation;
+use App\Models\MapSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,8 +17,9 @@ class MapEditorController extends Controller
         $nodes = MapNode::all();
         $paths = MapPath::with(['startNode', 'endNode'])->get();
         $locations = MapLocation::all();
+        $mapImageUrl = MapSetting::get('map_background_image', '');
         
-        return view('admin.map-editor.index', compact('nodes', 'paths', 'locations'));
+        return view('admin.map-editor.index', compact('nodes', 'paths', 'locations', 'mapImageUrl'));
     }
 
     public function storeNode(Request $request)
@@ -106,11 +108,22 @@ class MapEditorController extends Controller
         ]);
 
         if ($request->hasFile('map_image')) {
+            // Delete old map image if exists
+            $oldPath = MapSetting::get('map_background_image');
+            if ($oldPath) {
+                $oldFile = str_replace('/storage/', '', $oldPath);
+                Storage::disk('public')->delete($oldFile);
+            }
+
             $path = $request->file('map_image')->store('maps', 'public');
+            $fullPath = '/storage/' . $path;
+            
+            // Save to settings
+            MapSetting::set('map_background_image', $fullPath);
             
             return response()->json([
                 'success' => true,
-                'path' => '/storage/' . $path
+                'path' => $fullPath
             ]);
         }
 

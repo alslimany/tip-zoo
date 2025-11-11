@@ -107,7 +107,7 @@
             </div>
             <div class="card-body p-0">
                 <div id="mapEditor">
-                    <img id="mapImage" src="" alt="Map" style="display: none;">
+                    <img id="mapImage" src="{{ $mapImageUrl }}" alt="Map" style="{{ $mapImageUrl ? '' : 'display: none;' }}">
                     <svg id="mapSvg"></svg>
                 </div>
             </div>
@@ -171,6 +171,45 @@
             <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
                 <ul class="list-group list-group-flush" id="nodeList">
                     <li class="list-group-item text-muted text-center">No nodes yet</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-question-circle"></i> Quick Guide
+                </h3>
+            </div>
+            <div class="card-body">
+                <h6><i class="fas fa-upload text-warning"></i> 1. Upload Map</h6>
+                <p class="small">Click "Upload Map" to set a background image for your zoo map.</p>
+                
+                <h6><i class="fas fa-map-marker-alt text-primary"></i> 2. Add Nodes</h6>
+                <p class="small">Click "Add Node" tool, then click on the map to place waypoints, entrances, exits, or points of interest.</p>
+                
+                <h6><i class="fas fa-route text-success"></i> 3. Draw Paths</h6>
+                <p class="small">Click "Draw Path" tool, then click on two nodes to connect them with a path. Paths represent walkways between locations.</p>
+                
+                <h6><i class="fas fa-hand-paper text-info"></i> 4. Select & Edit</h6>
+                <p class="small">Use "Select" tool to click on nodes and edit their properties (name, type, description).</p>
+                
+                <hr>
+                
+                <h6>Node Types:</h6>
+                <ul class="small">
+                    <li><strong>Waypoint:</strong> Path intersection points</li>
+                    <li><strong>Entrance:</strong> Zoo entry points</li>
+                    <li><strong>Exit:</strong> Zoo exit points</li>
+                    <li><strong>POI:</strong> Points of Interest (e.g., animal exhibits, facilities)</li>
+                </ul>
+                
+                <h6>Tips:</h6>
+                <ul class="small">
+                    <li>Nodes are saved automatically when created</li>
+                    <li>Paths connect nodes for navigation</li>
+                    <li>Set distance on paths for route calculation</li>
+                    <li>Mark paths as accessible for wheelchair routing</li>
                 </ul>
             </div>
         </div>
@@ -307,12 +346,17 @@ function renderNode(node) {
             left: node.x + 'px',
             top: node.y + 'px'
         })
-        .click(function(e) {
+        .on('click', function(e) {
             e.stopPropagation();
-            if (currentTool === 'path') {
-                handlePathClick(node);
-            } else {
-                selectNode(node);
+            e.preventDefault();
+            const nodeId = $(this).attr('data-id');
+            const nodeData = nodes.find(n => n.id == nodeId);
+            if (nodeData) {
+                if (currentTool === 'path') {
+                    handlePathClick(nodeData);
+                } else {
+                    selectNode(nodeData);
+                }
             }
         });
     
@@ -360,8 +404,8 @@ function createPath(startId, endId) {
 }
 
 function renderPath(path) {
-    const startNode = nodes.find(n => n.id === path.start_node_id);
-    const endNode = nodes.find(n => n.id === path.end_node_id);
+    const startNode = nodes.find(n => n.id == path.start_node_id);
+    const endNode = nodes.find(n => n.id == path.end_node_id);
     
     if (startNode && endNode) {
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -371,8 +415,10 @@ function renderPath(path) {
         line.setAttribute('y2', endNode.y);
         line.setAttribute('class', 'map-path');
         line.setAttribute('data-id', path.id);
-        line.onclick = () => selectPath(path);
-        $('#mapSvg').append(line);
+        line.addEventListener('click', function() {
+            selectPath(path);
+        });
+        document.getElementById('mapSvg').appendChild(line);
     }
 }
 
