@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AnimalController;
 use App\Http\Controllers\Api\FacilityController;
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\MapLocationController;
+use App\Http\Controllers\Api\MapController;
 use App\Http\Controllers\Api\SyncController;
 
 Route::get('/user', function (Request $request) {
@@ -15,22 +16,34 @@ Route::get('/user', function (Request $request) {
 // Public API routes
 Route::prefix('v1')->group(function () {
     // Animals
-    Route::apiResource('animals', AnimalController::class)->only(['index', 'show']);
+    Route::get('animals', [AnimalController::class, 'index']);
+    Route::get('animals/search', [AnimalController::class, 'search']);
+    Route::get('animals/category/{category}', [AnimalController::class, 'byCategory']);
+    Route::get('animals/{id}', [AnimalController::class, 'show']);
     
     // Facilities
-    Route::apiResource('facilities', FacilityController::class)->only(['index', 'show']);
+    Route::get('facilities', [FacilityController::class, 'index']);
+    Route::get('facilities/search', [FacilityController::class, 'search']);
+    Route::get('facilities/type/{type}', [FacilityController::class, 'byType']);
+    Route::get('facilities/nearby', [FacilityController::class, 'nearby']);
+    Route::get('facilities/{id}', [FacilityController::class, 'show']);
     
     // Activities
     Route::apiResource('activities', ActivityController::class)->only(['index', 'show']);
     Route::get('activities/today', [ActivityController::class, 'today']);
     
-    // Map Locations
+    // Map
+    Route::get('map/data', [MapController::class, 'getMapData']);
+    Route::post('map/route', [MapController::class, 'calculateRoute']);
+    
+    // Map Locations (legacy)
     Route::apiResource('map-locations', MapLocationController::class)->only(['index', 'show']);
     
     // Sync
-    Route::post('sync', [SyncController::class, 'sync']);
+    Route::post('sync/check-updates', [SyncController::class, 'checkUpdates']);
+    Route::get('sync/full-dataset', [SyncController::class, 'getFullDataset']);
     
-    // Search
+    // Search (legacy - now available on individual resources)
     Route::get('search', [SyncController::class, 'search']);
 });
 

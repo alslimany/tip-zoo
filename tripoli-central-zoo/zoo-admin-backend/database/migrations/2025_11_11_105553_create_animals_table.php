@@ -13,11 +13,19 @@ return new class extends Migration
     {
         Schema::create('animals', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained('animal_categories')->onDelete('cascade');
             $table->string('name');
-            $table->string('scientific_name')->nullable();
+            $table->string('species');
+            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
+            $table->decimal('location_x', 10, 6)->nullable(); // X coordinate on map
+            $table->decimal('location_y', 10, 6)->nullable(); // Y coordinate on map
             $table->text('description');
-            $table->string('image')->nullable();
+            $table->string('image_url')->nullable();
+            $table->text('facts')->nullable(); // Fun facts about the animal
+            $table->enum('status', ['active', 'inactive', 'maintenance'])->default('active');
+            $table->boolean('featured')->default(false);
+            
+            // Additional fields from original migration
+            $table->string('scientific_name')->nullable();
             $table->json('gallery')->nullable(); // Multiple images
             $table->string('habitat')->nullable();
             $table->string('conservation_status')->nullable(); // Endangered, Vulnerable, etc.
@@ -25,13 +33,16 @@ return new class extends Migration
             $table->string('age')->nullable();
             $table->string('weight')->nullable();
             $table->string('size')->nullable();
-            $table->text('fun_facts')->nullable();
             $table->json('feeding_times')->nullable(); // Schedule of feeding times
-            $table->boolean('is_visible')->default(true);
-            $table->boolean('is_featured')->default(false);
             $table->integer('display_order')->default(0);
             $table->timestamps();
             $table->softDeletes();
+            
+            // Indexes
+            $table->index('category_id');
+            $table->index('status');
+            $table->index('featured');
+            $table->index(['location_x', 'location_y']);
         });
     }
 

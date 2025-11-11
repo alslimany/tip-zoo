@@ -13,24 +13,35 @@ return new class extends Migration
     {
         Schema::create('activities', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('activity_type'); // show, feeding, tour, event, workshop
+            $table->string('title');
             $table->text('description');
-            $table->string('image')->nullable();
+            $table->json('schedule')->nullable(); // Schedule information (times, dates, recurrence)
+            $table->string('location')->nullable(); // Location description or reference
+            $table->string('type'); // show, feeding, tour, event, workshop
+            $table->string('image_url')->nullable();
+            $table->enum('status', ['scheduled', 'cancelled', 'completed'])->default('scheduled');
+            
+            // Additional fields from original migration
             $table->foreignId('facility_id')->nullable()->constrained('facilities')->onDelete('set null');
             $table->foreignId('animal_id')->nullable()->constrained('animals')->onDelete('set null');
-            $table->dateTime('start_time');
-            $table->dateTime('end_time');
+            $table->dateTime('start_time')->nullable();
+            $table->dateTime('end_time')->nullable();
             $table->json('recurrence')->nullable(); // For recurring activities (daily, weekly, etc.)
             $table->integer('duration_minutes')->nullable();
             $table->integer('capacity')->nullable();
             $table->boolean('requires_booking')->default(false);
             $table->decimal('price', 10, 2)->nullable();
             $table->string('age_restriction')->nullable();
-            $table->boolean('is_active')->default(true);
             $table->integer('display_order')->default(0);
             $table->timestamps();
             $table->softDeletes();
+            
+            // Indexes
+            $table->index('type');
+            $table->index('status');
+            $table->index('facility_id');
+            $table->index('animal_id');
+            $table->index(['start_time', 'end_time']);
         });
     }
 

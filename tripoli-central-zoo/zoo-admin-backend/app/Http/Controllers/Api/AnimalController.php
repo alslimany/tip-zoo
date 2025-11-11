@@ -3,27 +3,52 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AnimalResource;
 use App\Models\Animal;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class AnimalController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a paginated listing of animals with filters.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $animals = Animal::with('category')
-            ->where('is_visible', true)
-            ->orderBy('display_order')
-            ->orderBy('name')
-            ->get();
+        $query = Animal::with(['category', 'openingHours', 'activities']);
 
-        return response()->json([
-            'success' => true,
-            'data' => $animals,
-        ]);
+        // Apply filters
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('featured')) {
+            $query->where('featured', $request->boolean('featured'));
+        }
+
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        // Apply scopes
+        if ($request->boolean('active_only')) {
+            $query->active();
+        }
+
+        if ($request->boolean('featured_only')) {
+            $query->featured();
+        }
+
+        // Order by
+        $query->orderBy('display_order')
+            ->orderBy('name');
+
+        // Paginate
+        $perPage = $request->input('per_page', 15);
+        $animals = $query->paginate($perPage);
+
+        return AnimalResource::collection($animals);
     }
 
     /**
@@ -31,46 +56,67 @@ class AnimalController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'category_id' => 'required|exists:animal_categories,id',
-            'name' => 'required|string|max:255',
-            'scientific_name' => 'nullable|string|max:255',
-            'description' => 'required|string',
-            'image' => 'nullable|string',
-            'gallery' => 'nullable|array',
-            'habitat' => 'nullable|string',
-            'conservation_status' => 'nullable|string',
-            'diet' => 'nullable|array',
-            'age' => 'nullable|string',
-            'weight' => 'nullable|string',
-            'size' => 'nullable|string',
-            'fun_facts' => 'nullable|string',
-            'feeding_times' => 'nullable|array',
-            'is_visible' => 'boolean',
-            'is_featured' => 'boolean',
-            'display_order' => 'integer',
-        ]);
-
-        $animal = Animal::create($validated);
+        $animal = Animal::create($request->validated());
 
         return response()->json([
             'success' => true,
-            'data' => $animal,
+            'data' => new AnimalResource($animal->load(['category', 'openingHours'])),
             'message' => 'Animal created successfully',
         ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Display full animal details with all relationships.
      */
-    public function show(string $id): JsonResponse
+    public function show(string $id): AnimalResource
     {
-        $animal = Animal::with('category')->findOrFail($id);
+        $animal = Animal::with(['category', 'openingHours', 'activities'])
+            ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'data' => $animal,
-        ]);
+        return new AnimalResource($animal);
+    }
+
+    /**
+     * Search animals by query string.
+     */
+    public function search(Request $request): AnonymousResourceCollection
+    {
+        $query = $request->input('query', $request->input('q', ''));
+
+        if (empty($query)) {
+            return AnimalResource::collection([]);
+        }
+
+        $animals = Animal::with(['category', 'openingHours'])
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('species', 'like', "%{$query}%")
+                  ->orWhere('scientific_name', 'like', "%{$query}%")
+                  ->orWhere('description', 'like', "%{$query}%")
+                  ->orWhere('facts', 'like', "%{$query}%");
+            })
+            ->active()
+            ->orderBy('featured', 'desc')
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
+
+        return AnimalResource::collection($animals);
+    }
+
+    /**
+     * Get animals by category.
+     */
+    public function byCategory(string $categoryId): AnonymousResourceCollection
+    {
+        $animals = Animal::with(['category', 'openingHours', 'activities'])
+            ->where('category_id', $categoryId)
+            ->active()
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get();
+
+        return AnimalResource::collection($animals);
     }
 
     /**
@@ -79,32 +125,11 @@ class AnimalController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         $animal = Animal::findOrFail($id);
-
-        $validated = $request->validate([
-            'category_id' => 'exists:animal_categories,id',
-            'name' => 'string|max:255',
-            'scientific_name' => 'nullable|string|max:255',
-            'description' => 'string',
-            'image' => 'nullable|string',
-            'gallery' => 'nullable|array',
-            'habitat' => 'nullable|string',
-            'conservation_status' => 'nullable|string',
-            'diet' => 'nullable|array',
-            'age' => 'nullable|string',
-            'weight' => 'nullable|string',
-            'size' => 'nullable|string',
-            'fun_facts' => 'nullable|string',
-            'feeding_times' => 'nullable|array',
-            'is_visible' => 'boolean',
-            'is_featured' => 'boolean',
-            'display_order' => 'integer',
-        ]);
-
-        $animal->update($validated);
+        $animal->update($request->validated());
 
         return response()->json([
             'success' => true,
-            'data' => $animal,
+            'data' => new AnimalResource($animal->load(['category', 'openingHours'])),
             'message' => 'Animal updated successfully',
         ]);
     }
